@@ -158,6 +158,7 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ThumbnailImage.cs" />
     <Compile Include="CoverPage.xaml.cs">
       <DependentUpon>CoverPage.xaml</DependentUpon>
     </Compile>
