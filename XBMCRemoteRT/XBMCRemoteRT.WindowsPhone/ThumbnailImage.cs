@@ -60,8 +60,15 @@ namespace XBMCRemoteRT
                             {
                                 if (imageStream != null)
                                 {
-                                    // TODO: Handle TaskCanceledException?
-                                    await sender.SetSourceAsync(imageStream);
+                                    try
+                                    {
+                                        await sender.SetSourceAsync(imageStream);
+                                    }
+                                    catch (TaskCanceledException)
+                                    {
+                                        // Async task was canceled, maybe app
+                                        // was suspended or too many tasks.
+                                    }
                                 }
                             }
                         });
@@ -100,6 +107,7 @@ namespace XBMCRemoteRT
 
                 System.Diagnostics.Debug.WriteLine("Starting download " + ++loadingCount + " " + imageURI.OriginalString);
                 HttpResponseMessage res = await client.SendAsync(req);
+                // TODO: Ensure requests are cached
                 System.Diagnostics.Debug.WriteLine("Complete download " + --loadingCount + " " + imageURI.OriginalString);
                 if (res.IsSuccessStatusCode)
                 {
