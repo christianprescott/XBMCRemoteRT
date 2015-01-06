@@ -32,31 +32,45 @@ namespace XBMCRemoteRT
             }
             set
             {
-                // TODO: some validation on value
-                SetValue(UriSourceProperty, value);
+                if (value != UriSource)
+                {
+                    SetValue(UriSourceProperty, value);
+                }
             }
-        }
-        
-        public ThumbnailImage() : base()
-        {
         }
 
         private static void OnUriChanged(DependencyObject d, DependencyPropertyChangedEventArgs a){
             ThumbnailImage sender = d as ThumbnailImage;
-            Uri newUri = (Uri)a.NewValue;
             if(a.Property == UriSourceProperty){
-                if (new string[] { "http", "https" }.Contains(newUri.Scheme))
+                Uri newUri = (Uri)a.NewValue;
+
+                if (newUri == null)
                 {
-                    d.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
-                    {
-                        IRandomAccessStream imageStream = await GetHttpImageStream(newUri);
-                        await sender.SetSourceAsync(imageStream);
-                    });
+                    // TODO: SetSource will not take a null parameter. Find another way to clear Source.
                 }
                 else
                 {
-                    // TODO: What do II do with non-http paths?
-                    System.Diagnostics.Debug.WriteLine("Unsupported scheme " + newUri.Scheme);
+                    // TODO: Perform authorized get only for http(s) requests and only to Kodi web server.
+                    if (new string[] { "http", "https" }.Contains(newUri.Scheme))
+                    {
+                        // TODO: This is on the right track, but needs better thread management
+                        d.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
+                        {
+                            using (IRandomAccessStream imageStream = await GetHttpImageStream(newUri))
+                            {
+                                if (imageStream != null)
+                                {
+                                    // TODO: Handle TaskCanceledException?
+                                    await sender.SetSourceAsync(imageStream);
+                                }
+                            }
+                        });
+                    }
+                    else
+                    {
+                        // TODO: What's the fallback for non-http and non-Kodi paths? e.g. app contents ms-appx://
+                        System.Diagnostics.Debug.WriteLine("Unsupported scheme " + newUri.Scheme);
+                    }
                 }
             }
         }
@@ -64,31 +78,35 @@ namespace XBMCRemoteRT
         private static async Task<IRandomAccessStream> GetHttpImageStream(Uri imageURI)
         {
             IRandomAccessStream imageStream = null;
-            // Download the image with HTTP Basic auth
-            // TODO: What does HttpClientHandler do here?
-            HttpClient client = new HttpClient(new HttpClientHandler());
-            // TODO: Test for active connection? What are possible errors of ConnectionManager?
-            client.BaseAddress = new Uri(imageURI.Scheme + "://" + imageURI.Authority);
-            // TODO: Some validation on imageUri?
-            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, imageURI.AbsolutePath);
-            if (ConnectionManager.CurrentConnection.Password != String.Empty)
+
+            if (imageURI != null)
             {
-                req.Headers.Authorization = new AuthenticationHeaderValue(
-                    "Basic",
-                    System.Convert.ToBase64String(Encoding.UTF8.GetBytes(
-                        String.Format("{0}:{1}",
-                        ConnectionManager.CurrentConnection.Username,
-                        ConnectionManager.CurrentConnection.Password)
-                    ))
-                );
+                // Download the image with HTTP Basic auth
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(imageURI.Scheme + "://" + imageURI.Authority);
+                HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, imageURI.AbsolutePath);
+                // TODO: Test for active connection? What are possible errors of ConnectionManager?
+                if (ConnectionManager.CurrentConnection.Password != String.Empty)
+                {
+                    req.Headers.Authorization = new AuthenticationHeaderValue(
+                        "Basic",
+                        System.Convert.ToBase64String(Encoding.UTF8.GetBytes(
+                            String.Format("{0}:{1}",
+                            ConnectionManager.CurrentConnection.Username,
+                            ConnectionManager.CurrentConnection.Password)
+                        ))
+                    );
+                }
+
+                System.Diagnostics.Debug.WriteLine("Starting download " + ++loadingCount + " " + imageURI.OriginalString);
+                HttpResponseMessage res = await client.SendAsync(req);
+                System.Diagnostics.Debug.WriteLine("Complete download " + --loadingCount + " " + imageURI.OriginalString);
+                if (res.IsSuccessStatusCode)
+                {
+                    imageStream = (await res.Content.ReadAsStreamAsync()).AsRandomAccessStream();
+                }
             }
 
-            loadingCount++;
-            System.Diagnostics.Debug.WriteLine("Starting download " + loadingCount + " " + imageURI.OriginalString);
-            HttpResponseMessage res = await client.SendAsync(req);
-            loadingCount--;
-            System.Diagnostics.Debug.WriteLine("Complete download " + loadingCount + " " + imageURI.OriginalString);
-            imageStream = (await res.Content.ReadAsStreamAsync()).AsRandomAccessStream();            
             return imageStream;
         }
     }
