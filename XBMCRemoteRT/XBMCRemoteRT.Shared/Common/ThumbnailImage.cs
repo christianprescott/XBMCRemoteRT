@@ -11,6 +11,7 @@ using Windows.UI.Xaml.Media.Imaging;
 using XBMCRemoteRT.Helpers;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.Graphics.Imaging;
 
 namespace XBMCRemoteRT.Common
 {
@@ -60,15 +61,44 @@ namespace XBMCRemoteRT.Common
                             {
                                 if (imageStream != null)
                                 {
-                                    try
+                                    BitmapDecoder decoder = await BitmapDecoder.CreateAsync(imageStream);
+                                    if (decoder.FrameCount > 0)
                                     {
-                                        await sender.SetSourceAsync(imageStream);
-                                    }
-                                    catch (TaskCanceledException)
-                                    {
-                                        // Async task was canceled, maybe app
-                                        // was suspended or image source was
-                                        // set again before this one finished.
+                                        BitmapFrame frame = await decoder.GetFrameAsync(0);
+                                        PixelDataProvider data = await frame.GetPixelDataAsync();
+                                        byte[] pixelData = data.DetachPixelData();
+
+                                        InMemoryRandomAccessStream outStream = new InMemoryRandomAccessStream();
+                                        // TODO: Explore other encoder create methods
+                                        // TODO: Explore other encoders, or encoding same format as source
+                                        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, outStream);
+                                        encoder.BitmapTransform.ScaledWidth = frame.PixelWidth;
+                                        encoder.BitmapTransform.ScaledHeight = frame.PixelHeight;
+                                        encoder.SetPixelData(
+                                            frame.BitmapPixelFormat,
+                                            frame.BitmapAlphaMode,
+                                            frame.PixelWidth, frame.PixelHeight,
+                                            frame.DpiX, frame.DpiY,
+                                            pixelData
+                                            );
+                                        try
+                                        {
+                                            await encoder.FlushAsync();
+                                            try
+                                            {
+                                                await sender.SetSourceAsync(outStream);
+                                            }
+                                            catch (TaskCanceledException)
+                                            {
+                                                // Async task was canceled, maybe app
+                                                // was suspended or image source was
+                                                // set again before this one finished.
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                            // TODO: investigate FlushAsync exceptions
+                                        }
                                     }
                                 }
                             }
