@@ -54,7 +54,7 @@ namespace XBMCRemoteRT.Common
                     if (new string[] { "http", "https" }.Contains(newUri.Scheme))
                     {
                         // TODO: This is on the right track, but needs better thread management
-                        d.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
+                        sender.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
                         {
                             using (IRandomAccessStream imageStream = await GetHttpImageStream(newUri))
                             {
@@ -67,7 +67,8 @@ namespace XBMCRemoteRT.Common
                                     catch (TaskCanceledException)
                                     {
                                         // Async task was canceled, maybe app
-                                        // was suspended or too many tasks.
+                                        // was suspended or image source was
+                                        // set again before this one finished.
                                     }
                                 }
                             }
