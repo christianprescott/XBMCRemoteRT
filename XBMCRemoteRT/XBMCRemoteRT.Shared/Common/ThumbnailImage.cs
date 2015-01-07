@@ -40,6 +40,48 @@ namespace XBMCRemoteRT.Common
             }
         }
 
+        public static readonly DependencyProperty DecodePixelWidthProperty =
+            DependencyProperty.Register(
+            "DecodePixelWidth",
+            typeof(int),
+            typeof(ThumbnailImage),
+            new PropertyMetadata(0, null)); // TODO: Change handler for decode width/height
+        public int DecodePixelWidth
+        {
+            get
+            {
+                return (int)GetValue(DecodePixelWidthProperty);
+            }
+            set
+            {
+                if (value != DecodePixelWidth)
+                {
+                    SetValue(DecodePixelWidthProperty, value);
+                }
+            }
+        }
+
+        public static readonly DependencyProperty DecodePixelHeightProperty =
+            DependencyProperty.Register(
+            "DecodePixelHeight",
+            typeof(int),
+            typeof(ThumbnailImage),
+            new PropertyMetadata(0, null)); // TODO: Change handler for decode width/height
+        public int DecodePixelHeight
+        {
+            get
+            {
+                return (int)GetValue(DecodePixelHeightProperty);
+            }
+            set
+            {
+                if (value != DecodePixelHeight)
+                {
+                    SetValue(DecodePixelHeightProperty, value);
+                }
+            }
+        }
+
         private static void OnUriChanged(DependencyObject d, DependencyPropertyChangedEventArgs a){
             ThumbnailImage sender = d as ThumbnailImage;
             if(a.Property == UriSourceProperty){
@@ -54,7 +96,6 @@ namespace XBMCRemoteRT.Common
                     // TODO: Perform authorized get only for http(s) requests and only to Kodi web server.
                     if (new string[] { "http", "https" }.Contains(newUri.Scheme))
                     {
-                        // TODO: This is on the right track, but needs better thread management
                         sender.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
                         {
                             using (IRandomAccessStream imageStream = await GetHttpImageStream(newUri))
@@ -66,20 +107,41 @@ namespace XBMCRemoteRT.Common
                                     {
                                         BitmapFrame frame = await decoder.GetFrameAsync(0);
                                         PixelDataProvider data = await frame.GetPixelDataAsync();
-                                        byte[] pixelData = data.DetachPixelData();
 
                                         InMemoryRandomAccessStream outStream = new InMemoryRandomAccessStream();
                                         // TODO: Explore other encoder create methods
                                         // TODO: Explore other encoders, or encoding same format as source
                                         BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, outStream);
-                                        encoder.BitmapTransform.ScaledWidth = frame.PixelWidth;
-                                        encoder.BitmapTransform.ScaledHeight = frame.PixelHeight;
+
+                                        // BitmapTransform.Scaled(Width|Height) will scale up too, so we 
+                                        // ensure we don't encode images larger than native.
+                                        // TODO: Should this behavior stay? There may be cases where you'd want to scale up I guess...
+                                        // TODO: Incorprate all that madness with logical/physical pixels
+                                        if (sender.DecodePixelWidth > 0 && sender.DecodePixelWidth < frame.PixelWidth)
+                                        {
+                                            encoder.BitmapTransform.ScaledWidth = (uint)sender.DecodePixelWidth;
+                                            // Scale uniformly if only one decode dimension is set
+                                            if (sender.DecodePixelHeight == 0)
+                                            {
+                                                encoder.BitmapTransform.ScaledHeight = (uint)(frame.PixelHeight * sender.DecodePixelWidth / frame.PixelWidth);
+                                            }
+                                        }
+                                        if (sender.DecodePixelHeight > 0 && sender.DecodePixelHeight < frame.PixelHeight)
+                                        {
+                                            encoder.BitmapTransform.ScaledHeight = (uint)sender.DecodePixelHeight;
+                                            // Scale uniformly if only one decode dimension is set
+                                            if (sender.DecodePixelWidth == 0)
+                                            {
+                                                encoder.BitmapTransform.ScaledWidth = (uint)(frame.PixelWidth * sender.DecodePixelHeight / frame.PixelHeight);
+                                            }
+                                        }
+
                                         encoder.SetPixelData(
                                             frame.BitmapPixelFormat,
                                             frame.BitmapAlphaMode,
                                             frame.PixelWidth, frame.PixelHeight,
                                             frame.DpiX, frame.DpiY,
-                                            pixelData
+                                            data.DetachPixelData()
                                             );
                                         try
                                         {
