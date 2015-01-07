@@ -5,7 +5,7 @@
     xmlns:local="using:XBMCRemoteRT.Pages.Audio"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:i="using:XBMCRemoteRT"
+    xmlns:common="using:XBMCRemoteRT.Common"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
@@ -39,7 +39,7 @@
                         </Grid.ColumnDefinitions>
                         <Image Width="173" Height="173" Stretch="UniformToFill">
                             <Image.Source>
-                                <i:ThumbnailImage UriSource="{Binding Thumbnail, Converter={StaticResource ImagePathConverter}}"/>
+                                <common:ThumbnailImage UriSource="{Binding Thumbnail, Converter={StaticResource ImagePathConverter}}"/>
                             </Image.Source>
                         </Image>
                         <Grid Grid.Column="1">

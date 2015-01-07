@@ -12,7 +12,7 @@ using XBMCRemoteRT.Helpers;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
-namespace XBMCRemoteRT
+namespace XBMCRemoteRT.Common
 {
     public class ThumbnailImage : BitmapSource
     {
