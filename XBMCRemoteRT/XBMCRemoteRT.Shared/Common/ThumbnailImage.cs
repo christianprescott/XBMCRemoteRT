@@ -109,9 +109,7 @@ namespace XBMCRemoteRT.Common
                                         PixelDataProvider data = await frame.GetPixelDataAsync();
 
                                         InMemoryRandomAccessStream outStream = new InMemoryRandomAccessStream();
-                                        // TODO: Explore other encoder create methods
-                                        // TODO: Explore other encoders, or encoding same format as source
-                                        BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, outStream);
+                                        BitmapEncoder encoder = await BitmapEncoder.CreateForTranscodingAsync(outStream, decoder);
 
                                         // BitmapTransform.Scaled(Width|Height) will scale up too, so we 
                                         // ensure we don't encode images larger than native.
@@ -136,13 +134,6 @@ namespace XBMCRemoteRT.Common
                                             }
                                         }
 
-                                        encoder.SetPixelData(
-                                            frame.BitmapPixelFormat,
-                                            frame.BitmapAlphaMode,
-                                            frame.PixelWidth, frame.PixelHeight,
-                                            frame.DpiX, frame.DpiY,
-                                            data.DetachPixelData()
-                                            );
                                         try
                                         {
                                             await encoder.FlushAsync();
