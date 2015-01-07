@@ -39,7 +39,7 @@
                         </Grid.ColumnDefinitions>
                         <Image Width="173" Height="173" Stretch="UniformToFill">
                             <Image.Source>
-                                <common:ThumbnailImage UriSource="{Binding Thumbnail, Converter={StaticResource ImagePathConverter}}"/>
+                                <common:ThumbnailImage DecodePixelHeight="173" UriSource="{Binding Thumbnail, Converter={StaticResource ImagePathConverter}}"/>
                             </Image.Source>
                         </Image>
                         <Grid Grid.Column="1">
